@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/java_etl/etl-ans.iml" filepath="$PROJECT_DIR$/java_etl/etl-ans.iml" />
+      <module fileurl="file://$PROJECT_DIR$/health-data-challenge-2025.iml" filepath="$PROJECT_DIR$/health-data-challenge-2025.iml" />
+    </modules>
+  </component>
+</project>

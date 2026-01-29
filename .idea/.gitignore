@@ -1,0 +1,29 @@
+# --- IDE e Sistema ---
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+out/
+# --- Java (Maven) ---
+target/
+*.class
+*.log
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# --- Node/Vue (Front) ---
+node_modules/
+dist/
+.env
+
+data/raw/*
+data/temp/*
+
+data/processed/*.zip
+data/processed/*.csv
+/.idea/
