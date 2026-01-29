@@ -6,6 +6,7 @@
       <list>
         <option value="$PROJECT_DIR$/java_etl/pom.xml" />
         <option value="$PROJECT_DIR$/01_etl_ans/pom.xml" />
+        <option value="$PROJECT_DIR$/02_validacao_dados/pom.xml" />
       </list>
     </option>
   </component>
