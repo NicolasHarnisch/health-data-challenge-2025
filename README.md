@@ -141,5 +141,101 @@ java -cp target/classes:target/dependency/* br.com.seu.Main
 
 ---
 
+
+## 🧪 Módulo 2: Validação e Enriquecimento de Dados (Java)
+
+**Localização:** [`./02_validacao_dados`](./02_validacao_dados)
+
+**Tecnologia:** Java 21 (LTS), Apache Commons CSV, JUnit 5.
+
+Este módulo atua como a camada de *Quality Assurance* (QA) e Enriquecimento. Ele consome os dados brutos gerados pelo ETL, aplica validações matemáticas (CNPJ), cruza com bases externas da ANS e gera métricas estatísticas para suporte à decisão.
+
+### 🛠️ Arquitetura da Solução
+
+O pipeline executa 4 estágios sequenciais e atômicos:
+
+1. **Coleta de Referência (`BaixadorCadastro`):**
+   * Conecta-se à API de Dados Abertos da ANS para baixar o cadastro atualizado de operadoras.
+   * Implementa um cliente HTTP resiliente (simulando *Browser User-Agent*) para evitar bloqueios de segurança (Erro 403).
+
+2. **Parsing Resiliente (`CsvUtil`):**
+   * Lê arquivos CSV ignorando BOM (*Byte Order Mark*) e variações de encoding (UTF-8 vs ISO-8859-1).
+   * Aplica sanitização de dados: remoção de caracteres não numéricos e normalização de nomes.
+
+3. **Validação Matemática (`ValidadorCNPJ`):**
+   * Implementa o algoritmo **Módulo 11** para verificar a autenticidade dos dígitos verificadores dos CNPJs.
+   * Classifica os registros sem descartá-los (estratégia de *Soft Validation*).
+
+4. **Enriquecimento & Analytics (`ProcessadorJoin`):**
+   * Realiza o cruzamento de dados (*Join*) entre as Despesas Financeiras e o Cadastro da ANS.
+   * Calcula métricas agregadas por operadora: Soma Total, Média Trimestral e **Desvio Padrão Amostral**.
+
+---
+
+## 🧠 Decisões Técnicas e Trade-offs (Análise Crítica)
+
+Conforme os critérios de avaliação, abaixo estão as justificativas para as decisões de engenharia adotadas neste módulo:
+
+### 1. Estratégia de Join: *Hash Map* vs *Nested Loop*
+
+* **Decisão:** *In-Memory Hash Join*.
+* **Contexto:** O cadastro de operadoras possui apenas ~1.200 registros, cabendo confortavelmente na memória.
+* **Justificativa:** Carregar o cadastro em um `HashMap<String, Operadora>` permite acesso com complexidade **O(1)**. Isso torna o cruzamento com as milhares de linhas de despesas exponencialmente mais rápido do que uma busca linear ou laços aninhados (O(N*M)).
+
+### 2. Validação de Dados: *Flagging* vs *Dropping*
+
+* **Decisão:** *Flagging* (Marcar com `CNPJ_Valido = false`).
+* **Contexto:** Registros financeiros contêm valores monetários que compõem o balanço total.
+* **Justificativa:** Em sistemas financeiros, descartar uma linha devido a um erro de digitação no cadastro (typo) altera o montante final ("furo no caixa"). A estratégia de marcar o registro permite auditoria posterior sem perda de integridade contábil.
+
+### 3. Resolução de Chaves (Análise de Qualidade)
+
+* **Problema:** O uso inicial do **CNPJ** como chave de ligação resultou em 100% de falha (0 matches) devido a inconsistências de formatação na fonte.
+* **Solução:** Alteração da chave primária de cruzamento para o **Número de Registro na ANS**.
+* **Resultado:** A taxa de sucesso subiu para **~99%**, restando apenas operadoras inativas ou canceladas, que foram tratadas como "NAO ENCONTRADA" para manter a rastreabilidade.
+
+---
+
+## ✅ Diferenciais Implementados
+
+* **🧪 Testes Unitários Matemáticos:**
+   * Cobertura de testes na classe `ValidadorCNPJ` garantindo a precisão do algoritmo Módulo 11.
+   * Validação de casos de borda (CNPJs com dígitos iguais, nulos ou formato incorreto).
+
+* **📊 Estatística Descritiva:**
+   * Implementação manual do cálculo de **Desvio Padrão** (`EstatisticaService`) para identificar volatilidade nas despesas, sem dependência de bibliotecas pesadas de Data Science.
+
+---
+
+## ▶️ Como Executar
+
+### Passo a Passo
+
+1. Acesse o diretório do módulo:
+```bash
+cd 02_validacao_dados
+
+```
+
+2. **Execute os testes unitários** (Para validar a matemática do CNPJ):
+```bash
+mvn test
+
+```
+
+
+3. **Execute o Processamento**:
+```bash
+mvn clean install
+java -cp target/classes:target/dependency/* br.com.seu.Main
+
+```
+
+
+
+**Resultado:** O arquivo enriquecido final estará disponível em:
+`data/processed/despesas_agregadas.csv`
+
+
 **Autor:** Nicolas Harnisch
 
