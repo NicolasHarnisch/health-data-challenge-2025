@@ -1,29 +1,15 @@
-# --- IDE e Sistema ---
+data/raw/
+data/processed/
+data/temp/
+*.csv
+*.zip
+*.log
 .idea/
 *.iml
-.DS_Store
-Thumbs.db
-out/
-# --- Java (Maven) ---
-target/
-*.class
-*.log
-
-# --- Python ---
+.vscode/
 __pycache__/
-*.py[cod]
-.venv/
+*.pyc
 venv/
-env/
-
-# --- Node/Vue (Front) ---
-node_modules/
-dist/
 .env
-
-data/raw/*
-data/temp/*
-
-data/processed/*.zip
-data/processed/*.csv
-/.idea/
+target/
+out/
