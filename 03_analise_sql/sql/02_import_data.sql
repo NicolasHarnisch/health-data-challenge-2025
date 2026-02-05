@@ -1,5 +1,6 @@
 USE ans_analytics;
 
+-- ATENÇÃO: Altere o caminho abaixo para o local onde você salvou o arquivo CSV
 -- 1. Importar Cadastro
 LOAD DATA LOCAL INFILE 'C:/Users/nicol/Documentos/Arquivos - Estudo/Projetos/health-data-challenge-2025/data/temp/cadastro_operadoras.csv'
     INTO TABLE operadoras
