@@ -20,7 +20,8 @@ createApp({
         let chartInstance = null;
         let searchTimer = null;
 
-        const API_URL = "https://ans-api-nicolas.onrender.com/despesas";
+        // URL ajustada para a base da API no Render
+        const API_URL = "https://ans-api-nicolas.onrender.com/api";
 
         const formatMoney = (value) => {
             if (value === undefined || value === null) return "0,00";
@@ -73,6 +74,7 @@ createApp({
 
         const fetchEstatisticas = async () => {
             try {
+                // Rota: /api/estatisticas
                 const res = await safeFetch(`${API_URL}/estatisticas`);
                 const data = await res.json();
 
@@ -91,6 +93,7 @@ createApp({
             loading.value = true;
 
             try {
+                // Rota: /api/operadoras
                 let url = `${API_URL}/operadoras?page=${page}&limit=${limit.value}`;
 
                 if (searchQuery.value?.trim()) {
@@ -171,6 +174,7 @@ createApp({
             modal.show();
 
             try {
+                // Rota: /api/operadoras/{registro_ans}/despesas
                 const res = await safeFetch(`${API_URL}/operadoras/${op.registro_ans}/despesas`);
                 const json = await res.json();
                 despesasOp.value = Array.isArray(json) ? json : [];
