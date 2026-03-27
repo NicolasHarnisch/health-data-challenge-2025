@@ -2,6 +2,7 @@ package br.com.seu.service;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,7 +21,7 @@ public class BaixadorCadastro {
             Path destino = pastaDestino.resolve("cadastro_operadoras.csv");
             System.out.println("Iniciando download do arquivo da ANS...");
 
-            URL url = new URL(LINK_ARQUIVO);
+            URL url = URI.create(LINK_ARQUIVO).toURL();
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");

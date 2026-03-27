@@ -8,6 +8,7 @@ import org.jsoup.select.Elements;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI; // Novo Import necessário
 import java.net.URL;
 import java.util.*;
 import java.util.logging.Level;
@@ -21,7 +22,6 @@ public class CrawlerANS {
     private static final String BASE_URL = "https://dadosabertos.ans.gov.br/FTP/PDA/demonstracoes_contabeis/";
     private static final String OUTPUT_DIR = "data/raw/";
 
-    // Patterns compilados para evitar recompile no loop
     private static final Pattern YEAR_PATTERN = Pattern.compile("20\\d{2}");
     private static final Pattern QUARTER_PATTERN = Pattern.compile("\\d[Tt]20\\d{2}");
 
@@ -29,15 +29,12 @@ public class CrawlerANS {
         log.info("Verificando atualizações na ANS...");
 
         try {
-            // Busca anos disponíveis
             List<String> years = fetchLinks(BASE_URL, YEAR_PATTERN);
-            // LinkedHashSet remove duplicatas mantendo ordem de inserção
             years = new ArrayList<>(new LinkedHashSet<>(years));
             years.sort(Collections.reverseOrder());
 
             List<String> toDownload = new ArrayList<>();
 
-            // Varre diretórios buscando os últimos 3 trimestres
             for (String year : years) {
                 if (toDownload.size() >= 3) break;
 
@@ -74,7 +71,6 @@ public class CrawlerANS {
     private List<String> fetchLinks(String url, Pattern pattern) throws IOException {
         Document doc = Jsoup.connect(url)
                 .timeout(10000)
-                // User-Agent genérico para evitar bloqueio simples
                 .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
                 .get();
 
@@ -92,7 +88,6 @@ public class CrawlerANS {
 
     private void download(String url) {
         try {
-            // Se for diretório, entra e busca o ZIP. Se for ZIP, baixa direto.
             if (url.toLowerCase().endsWith(".zip")) {
                 saveFile(url);
             } else {
@@ -113,13 +108,21 @@ public class CrawlerANS {
         String filename = url.substring(url.lastIndexOf("/") + 1);
         File dest = new File(OUTPUT_DIR + filename);
 
+        // Garante que a pasta de destino exista
+        if (dest.getParentFile() != null) {
+            dest.getParentFile().mkdirs();
+        }
+
         if (dest.exists()) {
             log.fine("Cache hit: " + filename);
             return;
         }
 
         log.info("Baixando: " + filename);
-        // Timeout maior para download (60s)
-        FileUtils.copyURLToFile(new URL(url), dest, 15000, 60000);
+        
+        // CORREÇÃO AQUI: Convertendo String -> URI -> URL (Padrão Java 20+)
+        URL urlConvertida = URI.create(url).toURL();
+        
+        FileUtils.copyURLToFile(urlConvertida, dest, 15000, 60000);
     }
 }
