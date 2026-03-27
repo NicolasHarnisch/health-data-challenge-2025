@@ -327,11 +327,11 @@ Conforme os requisitos do desafio, abaixo estão as justificativas para as decis
 
 ## 🌐 Módulo 4: Plataforma Web & API Analytics
 
-**Localização:** [`./04_plataforma_web`](https://www.google.com/search?q=./04_plataforma_web)
+**Localização:** [`./04_plataforma_web`](./04_plataforma_web)
 
-**Tecnologia:** Python 3.10+ (FastAPI), Vue.js 3, Chart.js, Bootstrap 5.
+**Tecnologia:** Python 3.10+ (FastAPI), Vue.js 3, Chart.js, Bootstrap 5, CSS Customizado, Docker.
 
-Este módulo é a camada de apresentação e distribuição da solução. Ele consiste em uma API REST de alta performance que expõe os dados do *Data Warehouse* e um Dashboard Interativo *Single Page Application* (SPA) para visualização de métricas financeiras em tempo real.
+Este módulo é a camada de apresentação e distribuição da solução. Ele consiste em uma API REST de alta performance, conteinerizada com Docker, que expõe os dados do *Data Warehouse* e um Dashboard Interativo *Single Page Application* (SPA) com visual *Enterprise* para visualização de métricas financeiras em tempo real.
 
 ### 🛠️ Arquitetura da Solução
 
@@ -340,15 +340,13 @@ O sistema opera em uma arquitetura desacoplada (Client-Server):
 1. **Backend Assíncrono (`main.py`):**
 * Desenvolvido com **FastAPI**, utilizando `Uvicorn` como servidor ASGI.
 * Gerencia conexões com o MySQL via *Connection Pooling* para suportar múltiplas requisições simultâneas.
-* Expõe endpoints RESTful (`/operadoras`, `/estatisticas`) com documentação automática (Swagger UI).
+* Expõe endpoints RESTful com suporte a paginação, ordenação e filtros dinâmicos (ex: `/operadoras?uf=SP&sort=nome`), com documentação automática (Swagger UI).
+* Ambiente de execução totalmente isolado e padronizado através de **Docker**.
 
-
-2. **Frontend Reativo (`index.html`):**
-* Construído com **Vue.js 3** (via CDN) para reatividade sem necessidade de *build steps* complexos.
-* Consome a API via `fetch` assíncrono.
-* Renderiza gráficos vetoriais com **Chart.js** e tabelas paginadas com estilização **Bootstrap**.
-
-
+2. **Frontend Reativo (`index.html`, `app.js`, `style.css`):**
+* Construído com **Vue.js 3** (via CDN) utilizando a *Composition API* para reatividade sem necessidade de *build steps* complexos.
+* Layout moderno baseado em *CSS Grid/Flexbox* (Sidebar + Main Content), simulando uma experiência SaaS.
+* Renderiza gráficos vetoriais interativos com **Chart.js** e tabelas dinâmicas.
 
 ---
 
@@ -357,75 +355,98 @@ O sistema opera em uma arquitetura desacoplada (Client-Server):
 Conforme os critérios de avaliação, abaixo estão as justificativas para as decisões de engenharia de software adotadas:
 
 ### 1. Framework Backend: FastAPI vs Flask/Django
-
 * **Decisão:** FastAPI.
 * **Contexto:** Necessidade de servir dados agregados de milhões de linhas com baixa latência.
 * **Justificativa:** Diferente do Flask (síncrono por padrão) ou Django (monolítico e pesado), o FastAPI oferece suporte nativo a concorrência (`async/await`). Isso permite que o servidor processe novas requisições enquanto aguarda o I/O do banco de dados, maximizando o *throughput* sem bloquear a thread principal.
 
 ### 2. Arquitetura Frontend: *No-Build* (CDN) vs *Bundler* (Vite/Webpack)
+* **Decisão:** Abordagem *No-Build* com arquivos separados.
+* **Contexto:** O projeto precisa ser avaliado rapidamente por recrutadores/revisores, mantendo um código limpo e escalável.
+* **Justificativa:** Elimina a necessidade de instalar Node.js ou gerenciar `node_modules`. O avaliador precisa apenas abrir o arquivo `index.html` no navegador. A separação lógica em `app.js` e `style.css` prepara o terreno caso o projeto migre para um *bundler* futuramente.
 
-* **Decisão:** Abordagem *No-Build* (Importação via CDN).
-* **Contexto:** O projeto precisa ser avaliado rapidamente por recrutadores/revisores.
-* **Justificativa:** Elimina a necessidade de instalar Node.js, gerenciar `node_modules` ou rodar pipelines de *build*. O avaliador precisa apenas abrir o arquivo `index.html` no navegador. Reduz a complexidade acidental e a barreira de entrada para execução.
+### 3. Design System e UX: Custom UI vs Padrão Bootstrap
+* **Decisão:** Criação de um Design System próprio (*Soft UI*).
+* **Contexto:** Dashboards com Bootstrap puro costumam ter a aparência de sistemas engessados.
+* **Justificativa:** A interface foi reescrita utilizando uma *Sidebar* estrutural e conteúdo em *cards* modernos, elevando a percepção visual do sistema para um produto B2B atual, mantendo o Bootstrap apenas para utilitários (`d-flex`, `m-4`) e a Grid.
 
-### 3. Gestão de Concorrência (Race Conditions)
-
-* **Problema:** Ao carregar o dashboard, as requisições de "Totais Financeiros" e "Lista de Operadoras" eram disparadas simultaneamente. O controlador de requisições original cancelava a primeira para priorizar a última (*AbortController* agressivo), resultando em dados zerados.
-* **Solução:** Refatoração da camada de serviço HTTP (`safeFetch`). Implementou-se um controle granular onde apenas buscas repetitivas (digitação no campo de pesquisa) são canceladas (Debounce), enquanto cargas iniciais críticas correm em paralelo (*Parallel Fetching*), garantindo a exibição correta dos **R$ 47 Trilhões**.
+### 4. Infraestrutura: Docker vs Execução Local
+* **Decisão:** Conteinerização da API.
+* **Contexto:** Evitar o problema de "na minha máquina funciona" devido a configurações de sistema operacional.
+* **Justificativa:** O Docker empacota o Python, o framework e as dependências em uma imagem enxuta baseada em `slim`. Isso garante paridade absoluta entre os ambientes de desenvolvimento, teste e produção.
 
 ---
 
 ## ✅ Diferenciais Implementados
 
 * **⚡ Otimização de UX (Debounce):**
-* Implementação de lógica de *Debounce* na barra de busca. A requisição ao backend só é disparada após o usuário parar de digitar por 450ms, prevenindo inundações de requisições (*Flood*) no banco de dados.
+* Implementação de lógica de *Debounce* na barra de busca. A requisição ao backend só é disparada após o usuário parar de digitar por 500ms, prevenindo inundações de requisições (*Flood*) no banco de dados.
 
+* **📈 Gráficos Interativos (Drill-down):**
+* O Chart.js está intrinsecamente ligado ao estado reativo do Vue. Clicar em uma barra específica de Estado (UF) no gráfico aplica automaticamente um filtro cruzado na tabela de operadoras abaixo.
+
+* **👻 Skeleton Loaders (Percepção de Performance):**
+* Substituição dos clássicos *spinners* de carregamento por "esqueletos" animados. Essa técnica melhora a **Performance Percebida** da aplicação durante chamadas de rede.
 
 * **📊 Visualização de Big Data:**
-* O dashboard foi calibrado para renderizar e formatar corretamente volumes financeiros na casa dos **Trilhões**, tratando precisão de ponto flutuante e localização (PT-BR) no Frontend.
-
-
-* **🛡️ Segurança e CORS:**
-* Configuração explícita de *Cross-Origin Resource Sharing* (CORS) no Backend para permitir comunicação segura entre diferentes origens locais (`localhost` vs `127.0.0.1`), um erro comum em ambientes de desenvolvimento Windows.
-
-
+* O dashboard foi calibrado para renderizar e formatar corretamente volumes financeiros na casa dos **Trilhões**, tratando precisão de ponto flutuante e localização monetária (PT-BR) no Frontend.
 
 ---
 
 ## ▶️ Como Executar
 
-### Pré-requisitos
+### Opção A: Via Docker (Recomendado)
 
-* Python 3.10+
-* Pip (Gerenciador de pacotes Python)
-* Navegador Moderno (Chrome/Edge/Firefox)
+**Pré-requisitos:** Docker Desktop instalado e rodando. Banco de Dados MySQL populado (Módulo 3) ativo na sua máquina.
 
-### Passo a Passo
-
-1. **Acesse o diretório do módulo:**
+1. Acesse o diretório do módulo:
 ```bash
 cd 04_plataforma_web
 ```
 
-
-2. **Instale as dependências:**
+2. Construa a imagem da API:
 ```bash
-pip install fastapi uvicorn mysql-connector-python
+docker build -t ans-api .
 ```
 
+3. Inicie o container (O parâmetro `host.docker.internal` conecta o container ao seu MySQL local):
+```bash
+docker run -d -p 8000:8000 --name backend-ans \
+  -e DB_HOST=host.docker.internal \
+  -e DB_PORT=3306 \
+  -e DB_USER=root \
+  -e DB_PASSWORD=1234 \
+  -e DB_NAME=ans_analytics \
+  ans-api
+```
 
-3. **Inicie o Servidor Backend:**
+> **Nota:** Ajuste `DB_PASSWORD=1234` se o seu MySQL local utilizar outra senha.
+
+4. Acesse o dashboard:
+   - **API:** `http://localhost:8000`
+   - **Swagger:** `http://localhost:8000/docs`
+   - **Frontend:** abra `index.html` no navegador (clique duplo ou extensão Live Server)
+
+---
+
+### Opção B: Execução Manual (Sem Docker)
+
+**Pré-requisitos:** Python 3.10+, pip, MySQL ativo.
+
+1. Acesse o diretório do módulo:
+```bash
+cd 04_plataforma_web
+```
+
+2. Instale as dependências:
+```bash
+pip install -r requirements.txt
+```
+
+3. Inicie o servidor backend:
 ```bash
 python -m uvicorn main:app --reload
 ```
 
+   Você verá no terminal: `Uvicorn running on http://127.0.0.1:8000`
 
-*O terminal exibirá: `Uvicorn running on http://127.0.0.1:8000*`
-4. **Acesse o Dashboard:**
-* Vá até a pasta `04_plataforma_web` pelo seu explorador de arquivos.
-* Dê um duplo clique no arquivo **`index.html`**.
-* *(Opcional)* Para testar a API pura, acesse: `http://127.0.0.1:8000/docs`
-
-
-
-**Resultado:** O painel carregará os KPIs financeiros e o gráfico de distribuição por UF instantaneamente.
+4. Abra o arquivo `index.html` no navegador para acessar o frontend.

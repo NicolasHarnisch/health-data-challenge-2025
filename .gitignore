@@ -13,3 +13,4 @@ venv/
 .env
 target/
 out/
+*.sql

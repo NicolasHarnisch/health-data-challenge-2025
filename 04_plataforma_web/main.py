@@ -45,8 +45,10 @@ MAX_LIMIT = 100
 @app.get("/api/operadoras")
 def list_operadoras(
         page: int = Query(1, gt=0),
-        limit: int = Query(10, gt=0, le=MAX_LIMIT),
-        search: Optional[str] = None
+        limit: int = Query(10, gt=0, le=100),
+        search: Optional[str] = None,
+        uf: Optional[str] = None,
+        sort: Optional[str] = "nome"
 ):
     offset = (page - 1) * limit
     conn = None
@@ -56,29 +58,40 @@ def list_operadoras(
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        base_query = "SELECT registro_ans, cnpj, razao_social, uf, modalidade FROM operadoras"
-        count_query = "SELECT COUNT(*) as total FROM operadoras"
-        data_params: List = []
-        count_params: List = []
+        base_query = "SELECT registro_ans, cnpj, razao_social, uf, modalidade FROM operadoras WHERE 1=1"
+        count_query = "SELECT COUNT(*) as total FROM operadoras WHERE 1=1"
+        params = []
 
         if search:
             like = f"%{search}%"
-            filter_clause = " WHERE razao_social LIKE %s OR cnpj LIKE %s"
-            base_query += filter_clause
-            count_query += filter_clause
-            data_params.extend([like, like])
-            count_params.extend([like, like])
+            clause = " AND (razao_social LIKE %s OR cnpj LIKE %s)"
+            base_query += clause
+            count_query += clause
+            params.extend([like, like])
 
-        # parâmetros para paginação
-        base_query += " LIMIT %s OFFSET %s"
-        data_params.extend([limit, offset])
+        if uf:
+            clause = " AND uf = %s"
+            base_query += clause
+            count_query += clause
+            params.append(uf)
 
-        # Conta total com parâmetros adequados
-        cursor.execute(count_query, tuple(count_params))
+        if sort == "nome":
+            base_query += " ORDER BY razao_social ASC"
+        elif sort == "uf":
+            base_query += " ORDER BY uf ASC, razao_social ASC"
+        elif sort == "registro":
+            base_query += " ORDER BY registro_ans ASC"
+        else:
+            base_query += " ORDER BY razao_social ASC"
+
+        cursor.execute(count_query, tuple(params))
         total_row = cursor.fetchone()
         total = total_row["total"] if total_row else 0
 
-        cursor.execute(base_query, tuple(data_params))
+        base_query += " LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
+
+        cursor.execute(base_query, tuple(params))
         rows = cursor.fetchall()
 
         pages = (total // limit) + (1 if total % limit > 0 else 0)
@@ -92,17 +105,8 @@ def list_operadoras(
         logger.exception("Erro ao consultar operadoras")
         raise HTTPException(status_code=500, detail="Erro interno ao acessar o banco de dados")
     finally:
-        if cursor:
-            try:
-                cursor.close()
-            except Exception:
-                pass
-        if conn:
-            try:
-                conn.close()
-            except Exception:
-                pass
-
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 @app.get("/api/operadoras/{registro_ans}/despesas")
 def get_operadora_despesas(registro_ans: str, limit: int = Query(200, gt=0, le=1000)):
