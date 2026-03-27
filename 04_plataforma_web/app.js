@@ -13,6 +13,7 @@ createApp({
         const limit = ref(10);
 
         const loading = ref(false);
+        const loadingInitial = ref(true); // Começa como true
         const loadingModal = ref(false);
         const selectedOp = ref(null);
         const despesasOp = ref([]);
@@ -324,11 +325,17 @@ createApp({
             });
         };
 
-        onMounted(() => {
-            Promise.all([
-                fetchEstatisticas(),
-                fetchOperadoras(1)
-            ]);
+        onMounted(async () => {
+            loadingInitial.value = true;
+            try {
+                // Executa os dois ao mesmo tempo e espera terminarem
+                await Promise.all([
+                    fetchEstatisticas(),
+                    fetchOperadoras(1)
+                ]);
+            } finally {
+                loadingInitial.value = false; // Só some quando tudo carregar
+            }
         });
 
         return {
@@ -341,6 +348,7 @@ createApp({
             sortBy,
             limit,
             loading,
+            loadingInitial,
             loadingModal,
             selectedOp,
             despesasOp,

@@ -15,6 +15,14 @@
 </head>
 <body>
 <div id="app" class="dashboard-page">
+    <div v-if="loadingInitial" class="loading-overlay">
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <p>Iniciando o servidor...</p>
+            <span>Por favor, aguarde alguns momentos.</span>
+        </div>
+    </div>
+
     <div class="container-fluid main-container">
 
         <header class="top-header">
