@@ -20,7 +20,7 @@ createApp({
         let chartInstance = null;
         let searchTimer = null;
 
-        const API_URL = "http://127.0.0.1:8000/api";
+        const API_URL = "https://ans-api-nicolas.onrender.com/despesas";
 
         const formatMoney = (value) => {
             if (value === undefined || value === null) return "0,00";
