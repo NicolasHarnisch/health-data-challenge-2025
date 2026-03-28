@@ -542,7 +542,7 @@ body {
     gap: 12px;
 }
 
-/* ALTERAÇÃO AQUI: Adicionado cursor pointer para indicar que é clicável */
+/* CURSOR CLICÁVEL NO RANKING */
 .ranking-item-row {
     display: flex;
     align-items: center;

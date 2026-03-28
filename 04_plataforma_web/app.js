@@ -18,6 +18,7 @@ createApp({
         const loadingModal = ref(false);
         const selectedOp = ref(null);
         
+        // VARIÁVEIS DO MODAL DE DESPESAS
         const despesasOp = ref([]);
         const sortDespesasKey = ref('data_referencia'); 
         const sortDespesasOrder = ref('desc'); 
@@ -182,6 +183,12 @@ createApp({
                 } else if (sortDespesasKey.value === 'valor') {
                     valA = Number(valA) || 0;
                     valB = Number(valB) || 0;
+                } else if (sortDespesasKey.value === 'descricao_conta') {
+                    // Ordenação alfabética para a categoria
+                    valA = String(valA || '');
+                    valB = String(valB || '');
+                    const cmp = valA.localeCompare(valB, 'pt-BR');
+                    return sortDespesasOrder.value === 'asc' ? cmp : -cmp;
                 }
 
                 if (valA < valB) return sortDespesasOrder.value === 'asc' ? -1 : 1;

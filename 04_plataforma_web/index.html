@@ -190,12 +190,10 @@
             <div class="ranking-list" v-if="rankingOperadoras.length > 0">
                 <div v-for="(op, index) in rankingOperadoras" :key="op.registro_ans" class="ranking-item-row" @click="openModal(op)">
                     <div class="ranking-badge">#{{ index + 1 }}</div>
-                    
                     <div class="ranking-info-col">
                         <div class="ranking-name-full">{{ op.razao_social }}</div>
                         <div class="ranking-ans-full">Reg. ANS: {{ op.registro_ans }}</div>
                     </div>
-                    
                     <div class="ranking-value-col">
                         R$ {{ formatMoney(op.total_despesas) }}
                     </div>
@@ -335,6 +333,13 @@
                                     <i class="bi bi-arrow-up-short" v-if="sortDespesasKey === 'data_referencia' && sortDespesasOrder === 'asc'"></i>
                                     <i class="bi bi-arrow-down-up text-muted opacity-50" v-if="sortDespesasKey !== 'data_referencia'"></i>
                                 </th>
+
+                                <th class="py-3 sortable-header" @click="toggleSortDespesas('descricao_conta')">
+                                    Categoria da Despesa
+                                    <i class="bi bi-arrow-down-short" v-if="sortDespesasKey === 'descricao_conta' && sortDespesasOrder === 'desc'"></i>
+                                    <i class="bi bi-arrow-up-short" v-if="sortDespesasKey === 'descricao_conta' && sortDespesasOrder === 'asc'"></i>
+                                    <i class="bi bi-arrow-down-up text-muted opacity-50" v-if="sortDespesasKey !== 'descricao_conta'"></i>
+                                </th>
                                 
                                 <th class="text-end pe-4 py-3 sortable-header" @click="toggleSortDespesas('valor')">
                                     Valor da Despesa
@@ -348,13 +353,16 @@
                             
                             <tr v-for="desp in sortedDespesas" :key="desp.id">
                                 <td class="ps-4">{{ formatDate(desp.data_referencia) }}</td>
+                                
+                                <td>{{ desp.descricao_conta || 'Geral/Não Especificado' }}</td>
+
                                 <td class="text-end pe-4 fw-bold text-danger">
                                     - R$ {{ formatMoney(desp.valor) }}
                                 </td>
                             </tr>
 
                             <tr v-if="sortedDespesas.length === 0">
-                                <td colspan="2" class="text-center py-5 text-muted">
+                                <td colspan="3" class="text-center py-5 text-muted">
                                     Nenhum registro de despesa encontrado para esta operadora.
                                 </td>
                             </tr>
