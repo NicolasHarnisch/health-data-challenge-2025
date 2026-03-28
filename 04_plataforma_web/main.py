@@ -6,13 +6,13 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 import mysql.connector
 
-# Configuração de logs
+# Configuração de logs para ver o que acontece no Render
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ans_api")
 
 app = FastAPI(title="API Operadoras ANS", version="1.0.0")
 
-# Configurações do Banco
+# Configurações do Banco de Dados (Puxando das variáveis do Render)
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = int(os.getenv("DB_PORT", "3306"))
 DB_USER = os.getenv("DB_USER", "root")
@@ -48,7 +48,7 @@ def get_db_connection():
 def home():
     return {
         "status": "online",
-        "message": "API Operadoras ANS",
+        "message": "API Operadoras ANS - Use /docs para ver a documentação",
         "endpoints": ["/api/operadoras", "/api/estatisticas", "/api/ranking-operadoras"]
     }
 
@@ -63,6 +63,7 @@ def list_operadoras(
     offset = (page - 1) * limit
     conn = None
     cursor = None
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -107,6 +108,7 @@ def list_operadoras(
             "data": rows,
             "meta": {"total": total, "page": page, "limit": limit, "pages": pages}
         }
+
     except Exception as e:
         logger.exception("Erro na consulta de operadoras")
         raise HTTPException(status_code=500, detail=str(e))
@@ -121,6 +123,7 @@ def get_operadora_despesas(registro_ans: str, limit: int = Query(200, gt=0, le=1
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+
         query = """
                 SELECT id, descricao_conta, valor, data_referencia, ano, trimestre
                 FROM demonstracoes_financeiras
@@ -148,7 +151,6 @@ def get_estatisticas():
         cursor.execute("SELECT SUM(valor) as total_geral FROM demonstracoes_financeiras")
         total = cursor.fetchone()["total_geral"] or 0
 
-        # Removido o LIMIT para puxar TODOS os estados!
         cursor.execute("""
             SELECT o.uf, SUM(d.valor) as total
             FROM demonstracoes_financeiras d
@@ -167,7 +169,6 @@ def get_estatisticas():
         if cursor: cursor.close()
         if conn: conn.close()
 
-# NOVO: Rota para o Ranking de Operadoras
 @app.get("/api/ranking-operadoras")
 def get_ranking_operadoras(limit: int = Query(10, gt=0, le=50)):
     conn = None
@@ -176,11 +177,12 @@ def get_ranking_operadoras(limit: int = Query(10, gt=0, le=50)):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
+        # Adicionado o.uf na query para o modal poder exibir o estado
         query = """
-            SELECT o.registro_ans, o.razao_social, SUM(d.valor) as total_despesas
+            SELECT o.registro_ans, o.razao_social, o.uf, SUM(d.valor) as total_despesas
             FROM demonstracoes_financeiras d
             JOIN operadoras o ON d.registro_ans = o.registro_ans
-            GROUP BY o.registro_ans, o.razao_social
+            GROUP BY o.registro_ans, o.razao_social, o.uf
             ORDER BY total_despesas DESC
             LIMIT %s
         """

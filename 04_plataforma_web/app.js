@@ -4,7 +4,7 @@ createApp({
     setup() {
         const operadoras = ref([]);
         const estatisticas = ref({ total_despesas: 0, distribuicao_uf: [] });
-        const rankingOperadoras = ref([]); // NOVA VARIAVEL
+        const rankingOperadoras = ref([]); 
         const meta = ref({ page: 1, pages: 1 });
 
         const searchQuery = ref("");
@@ -13,11 +13,14 @@ createApp({
         const sortBy = ref("nome");
         const limit = ref(10);
 
-        const loadingInitial = ref(true);
         const loading = ref(false);
+        const loadingInitial = ref(true); 
         const loadingModal = ref(false);
         const selectedOp = ref(null);
+        
         const despesasOp = ref([]);
+        const sortDespesasKey = ref('data_referencia'); 
+        const sortDespesasOrder = ref('desc'); 
 
         let chartInstance = null;
         let searchTimer = null;
@@ -27,47 +30,50 @@ createApp({
         const formatMoney = (value) => {
             if (value === undefined || value === null) return "0,00";
             const num = Number(value) || 0;
-            if (num >= 1e12) return (num / 1e12).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " Tri";
-            if (num >= 1e9) return (num / 1e9).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " Bi";
-            return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            if (num >= 1e12) {
+                return (num / 1e12).toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }) + " Tri";
+            }
+
+            if (num >= 1e9) {
+                return (num / 1e9).toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }) + " Bi";
+            }
+
+            return num.toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
         };
 
         const formatDate = (dateString) => {
             if (!dateString) return "-";
             const d = new Date(dateString);
-            return Number.isNaN(d.getTime()) ? dateString : d.toLocaleDateString('pt-BR');
+            if (Number.isNaN(d.getTime())) return dateString;
+            return d.toLocaleDateString('pt-BR');
         };
 
-        // NOVA FUNÇÃO: Paciente com o Render (Tenta 4 vezes)
-        const safeFetch = async (url, options = {}, tentativas = 4) => {
-            for (let i = 0; i < tentativas; i++) {
-                try {
-                    const res = await fetch(url, options);
-                    if (res.ok) return res;
-                    
-                    if (res.status >= 500 && i < tentativas - 1) {
-                        console.warn(`Servidor acordando... Tentativa ${i + 1} falhou. Nova tentativa em 5s.`);
-                        await new Promise(r => setTimeout(r, 5000));
-                        continue;
-                    }
-                    throw new Error(`HTTP ${res.status}`);
-                } catch (e) {
-                    if (i < tentativas - 1) {
-                        console.warn(`Falha de conexão... Tentativa ${i + 1}. Nova tentativa em 5s.`);
-                        await new Promise(r => setTimeout(r, 5000));
-                        continue;
-                    }
-                    throw e;
-                }
-            }
+        const safeFetch = async (url, options = {}) => {
+            const res = await fetch(url, options);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res;
         };
 
-        const getCurrentUF = () => chartSelectedUF.value || selectedUF.value || "";
+        const getCurrentUF = () => {
+            return chartSelectedUF.value || selectedUF.value || "";
+        };
 
         const scrollToOperadoras = async () => {
             await nextTick();
             const section = document.getElementById("operadoras-section");
-            if (section) section.scrollIntoView({ behavior: "smooth", block: "start" });
+            if (section) {
+                section.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
         };
 
         const fetchEstatisticas = async () => {
@@ -81,7 +87,6 @@ createApp({
             }
         };
 
-        // NOVA FUNÇÃO: Puxa o Ranking
         const fetchRanking = async () => {
             try {
                 const res = await safeFetch(`${API_URL}/ranking-operadoras`);
@@ -96,15 +101,19 @@ createApp({
             loading.value = true;
             try {
                 let url = `${API_URL}/operadoras?page=${page}&limit=${limit.value}`;
+
                 if (searchQuery.value?.trim()) url += `&search=${encodeURIComponent(searchQuery.value.trim())}`;
+                
                 const currentUF = getCurrentUF();
                 if (currentUF) url += `&uf=${encodeURIComponent(currentUF)}`;
                 if (sortBy.value) url += `&sort=${encodeURIComponent(sortBy.value)}`;
 
                 const res = await safeFetch(url);
                 const json = await res.json();
+
                 operadoras.value = json.data || [];
                 meta.value = json.meta || { page: 1, pages: 1 };
+
                 if (scroll) await scrollToOperadoras();
             } catch (e) {
                 console.error("Erro ao buscar operadoras:", e);
@@ -116,7 +125,10 @@ createApp({
 
         const debouncedFetch = () => {
             clearTimeout(searchTimer);
-            searchTimer = setTimeout(() => { meta.value.page = 1; fetchOperadoras(1); }, 500);
+            searchTimer = setTimeout(() => {
+                meta.value.page = 1;
+                fetchOperadoras(1);
+            }, 500);
         };
 
         const applyFilters = async () => { chartSelectedUF.value = ""; meta.value.page = 1; await fetchOperadoras(1, true); };
@@ -127,9 +139,15 @@ createApp({
         const openModal = async (op) => {
             selectedOp.value = op;
             despesasOp.value = [];
+            
+            sortDespesasKey.value = 'data_referencia';
+            sortDespesasOrder.value = 'desc';
+            
             loadingModal.value = true;
+
             const modal = new bootstrap.Modal(document.getElementById("detailsModal"));
             modal.show();
+
             try {
                 const res = await safeFetch(`${API_URL}/operadoras/${op.registro_ans}/despesas`);
                 const json = await res.json();
@@ -142,13 +160,64 @@ createApp({
             }
         };
 
+        const toggleSortDespesas = (key) => {
+            if (sortDespesasKey.value === key) {
+                sortDespesasOrder.value = sortDespesasOrder.value === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortDespesasKey.value = key;
+                sortDespesasOrder.value = 'desc'; 
+            }
+        };
+
+        const sortedDespesas = computed(() => {
+            let list = [...despesasOp.value];
+            
+            list.sort((a, b) => {
+                let valA = a[sortDespesasKey.value];
+                let valB = b[sortDespesasKey.value];
+
+                if (sortDespesasKey.value === 'data_referencia') {
+                    valA = new Date(valA).getTime();
+                    valB = new Date(valB).getTime();
+                } else if (sortDespesasKey.value === 'valor') {
+                    valA = Number(valA) || 0;
+                    valB = Number(valB) || 0;
+                }
+
+                if (valA < valB) return sortDespesasOrder.value === 'asc' ? -1 : 1;
+                if (valA > valB) return sortDespesasOrder.value === 'asc' ? 1 : -1;
+                return 0;
+            });
+            
+            return list;
+        });
+
+        const availableUFs = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
+
+        const filteredOperadoras = computed(() => {
+            let list = [...operadoras.value];
+            if (sortBy.value === "nome") {
+                list.sort((a, b) => (a.razao_social || "").localeCompare((b.razao_social || ""), "pt-BR"));
+            } else if (sortBy.value === "uf") {
+                list.sort((a, b) => (a.uf || "").localeCompare((b.uf || ""), "pt-BR"));
+            } else if (sortBy.value === "registro") {
+                list.sort((a, b) => String(a.registro_ans || "").localeCompare(String(b.registro_ans || ""), "pt-BR"));
+            }
+            return list;
+        });
+
+        const currentSelectedLabel = computed(() => {
+            if (chartSelectedUF.value) return `Estado selecionado no gráfico: ${chartSelectedUF.value}`;
+            if (selectedUF.value) return `Estado selecionado: ${selectedUF.value}`;
+            return "Sem filtro por estado";
+        });
+
         const renderChart = (data = []) => {
             const canvas = document.getElementById("chartUF");
             if (!canvas) return;
             if (chartInstance) chartInstance.destroy();
 
-            // MUDANÇA: Agora pega todos os estados da API (removido o .slice)
-            const chartData = data; 
+            const chartData = data;
 
             chartInstance = new Chart(canvas, {
                 type: "bar",
@@ -159,27 +228,20 @@ createApp({
                         data: chartData.map(item => Number(item.total) || 0),
                         backgroundColor: chartData.map(item => chartSelectedUF.value === item.uf ? "rgba(31, 111, 255, 1)" : "rgba(31, 111, 255, 0.72)"),
                         hoverBackgroundColor: chartData.map(item => chartSelectedUF.value === item.uf ? "rgba(31, 111, 255, 1)" : "rgba(31, 111, 255, 0.88)"),
-                        borderRadius: 14,
-                        borderSkipped: false,
-                        maxBarThickness: 40
+                        borderRadius: 14, borderSkipped: false, maxBarThickness: 58, minBarLength: 8
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: { duration: 700 },
+                    responsive: true, maintainAspectRatio: false, animation: { duration: 700 },
                     onClick: async (event, elements) => {
                         if (!elements.length) return;
                         const index = elements[0].index;
                         const clickedUF = chartData[index]?.uf;
                         if (!clickedUF) return;
 
-                        if (chartSelectedUF.value === clickedUF) {
-                            chartSelectedUF.value = "";
-                        } else {
-                            chartSelectedUF.value = clickedUF;
-                            selectedUF.value = "";
-                        }
+                        if (chartSelectedUF.value === clickedUF) chartSelectedUF.value = "";
+                        else { chartSelectedUF.value = clickedUF; selectedUF.value = ""; }
+
                         meta.value.page = 1;
                         renderChart(estatisticas.value.distribuicao_uf || []);
                         await fetchOperadoras(1, true);
@@ -192,15 +254,8 @@ createApp({
                         }
                     },
                     scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: "#edf2f7", drawBorder: false },
-                            ticks: { color: "#7b8794", callback: function(value) { return "R$ " + Number(value).toLocaleString("pt-BR"); } }
-                        },
-                        x: {
-                            grid: { display: false, drawBorder: false },
-                            ticks: { color: "#5f6c7b", font: { weight: "600" }, autoSkip: false, maxRotation: 45, minRotation: 45 }
-                        }
+                        y: { beginAtZero: true, grid: { color: "#edf2f7", drawBorder: false }, ticks: { color: "#7b8794", callback: function(value) { return "R$ " + Number(value).toLocaleString("pt-BR"); } } },
+                        x: { grid: { display: false, drawBorder: false }, ticks: { color: "#5f6c7b", font: { weight: "600" }, autoSkip: false, maxRotation: 45, minRotation: 45 } }
                     }
                 }
             });
@@ -209,24 +264,15 @@ createApp({
         onMounted(async () => {
             loadingInitial.value = true;
             try {
-                await Promise.all([
-                    fetchEstatisticas(),
-                    fetchRanking(),
-                    fetchOperadoras(1)
-                ]);
-            } finally {
-                loadingInitial.value = false;
-            }
+                await Promise.all([fetchEstatisticas(), fetchRanking(), fetchOperadoras(1)]);
+            } finally { loadingInitial.value = false; }
         });
 
-        const availableUFs = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
-
         return {
-            operadoras, estatisticas, rankingOperadoras, meta, searchQuery, selectedUF, chartSelectedUF,
-            sortBy, limit, loading, loadingModal, loadingInitial, selectedOp, despesasOp, availableUFs,
-            filteredOperadoras: computed(() => [...operadoras.value]),
-            currentSelectedLabel: computed(() => chartSelectedUF.value ? `Estado selecionado no gráfico: ${chartSelectedUF.value}` : (selectedUF.value ? `Estado selecionado: ${selectedUF.value}` : "Sem filtro por estado")),
-            formatMoney, formatDate, fetchOperadoras, debouncedFetch, openModal, filterByUF, clearFilters, clearChartFilter, applyFilters
+            operadoras, estatisticas, rankingOperadoras, meta, searchQuery, selectedUF, chartSelectedUF, sortBy, limit,
+            loading, loadingInitial, loadingModal, selectedOp, availableUFs, filteredOperadoras, currentSelectedLabel,
+            sortedDespesas, sortDespesasKey, sortDespesasOrder, 
+            formatMoney, formatDate, fetchOperadoras, debouncedFetch, openModal, filterByUF, clearFilters, clearChartFilter, applyFilters, toggleSortDespesas
         };
     }
 }).mount("#app");
