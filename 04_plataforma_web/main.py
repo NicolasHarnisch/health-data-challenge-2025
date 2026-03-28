@@ -6,13 +6,13 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 import mysql.connector
 
-# Configuração de logs para ver o que acontece no Render
+# Configuração de logs
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ans_api")
 
 app = FastAPI(title="API Operadoras ANS", version="1.0.0")
 
-# Configurações do Banco de Dados (Puxando das variáveis do Render)
+# Configurações do Banco
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = int(os.getenv("DB_PORT", "3306"))
 DB_USER = os.getenv("DB_USER", "root")
@@ -21,7 +21,7 @@ DB_NAME = os.getenv("DB_NAME", "ans_analytics")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Permite que seu frontend acesse a API de qualquer lugar
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -29,7 +29,6 @@ app.add_middleware(
 
 def get_db_connection():
     try:
-        # Adicionado ssl_disabled=False para garantir conexão segura com Aiven
         return mysql.connector.connect(
             host=DB_HOST,
             port=DB_PORT,
@@ -49,8 +48,8 @@ def get_db_connection():
 def home():
     return {
         "status": "online",
-        "message": "API Operadoras ANS - Use /docs para ver a documentação",
-        "endpoints": ["/api/operadoras", "/api/estatisticas"]
+        "message": "API Operadoras ANS",
+        "endpoints": ["/api/operadoras", "/api/estatisticas", "/api/ranking-operadoras"]
     }
 
 @app.get("/api/operadoras")
@@ -64,7 +63,6 @@ def list_operadoras(
     offset = (page - 1) * limit
     conn = None
     cursor = None
-
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -86,7 +84,6 @@ def list_operadoras(
             count_query += clause
             params.append(uf)
 
-        # Ordenação
         sort_options = {
             "nome": "razao_social ASC",
             "uf": "uf ASC, razao_social ASC",
@@ -110,7 +107,6 @@ def list_operadoras(
             "data": rows,
             "meta": {"total": total, "page": page, "limit": limit, "pages": pages}
         }
-
     except Exception as e:
         logger.exception("Erro na consulta de operadoras")
         raise HTTPException(status_code=500, detail=str(e))
@@ -125,7 +121,6 @@ def get_operadora_despesas(registro_ans: str, limit: int = Query(200, gt=0, le=1
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-
         query = """
                 SELECT id, descricao_conta, valor, data_referencia, ano, trimestre
                 FROM demonstracoes_financeiras
@@ -143,7 +138,7 @@ def get_operadora_despesas(registro_ans: str, limit: int = Query(200, gt=0, le=1
         if conn: conn.close()
 
 @app.get("/api/estatisticas")
-def get_estatisticas(top_n: int = Query(10, gt=0, le=50)):
+def get_estatisticas():
     conn = None
     cursor = None
     try:
@@ -153,6 +148,7 @@ def get_estatisticas(top_n: int = Query(10, gt=0, le=50)):
         cursor.execute("SELECT SUM(valor) as total_geral FROM demonstracoes_financeiras")
         total = cursor.fetchone()["total_geral"] or 0
 
+        # Removido o LIMIT para puxar TODOS os estados!
         cursor.execute("""
             SELECT o.uf, SUM(d.valor) as total
             FROM demonstracoes_financeiras d
@@ -160,13 +156,38 @@ def get_estatisticas(top_n: int = Query(10, gt=0, le=50)):
             WHERE o.uf != 'ND'
             GROUP BY o.uf
             ORDER BY total DESC
-            LIMIT %s
-        """, (top_n,))
+        """)
         top_ufs = cursor.fetchall()
 
         return {"total_despesas": total, "distribuicao_uf": top_ufs}
     except Exception as e:
         logger.exception("Erro nas estatísticas")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
+
+# NOVO: Rota para o Ranking de Operadoras
+@app.get("/api/ranking-operadoras")
+def get_ranking_operadoras(limit: int = Query(10, gt=0, le=50)):
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        query = """
+            SELECT o.registro_ans, o.razao_social, SUM(d.valor) as total_despesas
+            FROM demonstracoes_financeiras d
+            JOIN operadoras o ON d.registro_ans = o.registro_ans
+            GROUP BY o.registro_ans, o.razao_social
+            ORDER BY total_despesas DESC
+            LIMIT %s
+        """
+        cursor.execute(query, (limit,))
+        return cursor.fetchall()
+    except Exception as e:
+        logger.exception("Erro ao buscar ranking")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         if cursor: cursor.close()
